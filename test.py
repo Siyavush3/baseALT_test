@@ -3,8 +3,8 @@ import ctypes
 import json
 import sys
 
-
 librdb = ctypes.CDLL("./librdbcompare.so")
+
 librdb.fetch_package_list.restype = ctypes.c_char_p
 librdb.fetch_package_list.argtypes = [ctypes.c_char_p]
 

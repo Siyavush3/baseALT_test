@@ -5,9 +5,14 @@
 #include <json-c/json.h>
 #include <iostream>
 #include <vector>
+#include <memory> 
+#include <mutex> 
 
 namespace {
+    std::once_flag branches_init_flag;//Флаг инициализации
 
+    // Кэш для действительных имен веток
+    std::vector<std::string> cached_branches;
     size_t write_callback(void* contents, size_t size, size_t nmemb, std::string* output) { 
         // Записывает данные HTTP-ответа в строку
         size_t total_size = size * nmemb;
@@ -42,65 +47,71 @@ namespace {
     }
 
     bool is_valid_branch(const char* branch_name) {
-        //Проверяем название веток на валидность
+        // Проверяет, является ли имя ветки действительным, получая и кэшируя список веток
 
-        if (!branch_name || !*branch_name) {//Проверяет корректность входного имени ветки
+        if (!branch_name || !*branch_name) { // Проверяет корректность входного имени ветки
             std::cerr << "Error: Invalid branch name" << std::endl;
             return false;
-
         }
 
-        static std::vector<std::string> cached_branches;//Кешируем ветки 
-        if (cached_branches.empty()) {
-            // Запрашивает JSON со списком веток
+        // Используем std::call_once для потокобезопасной инициализации cached_branches
+        std::call_once(branches_init_flag, []() {
+            // Запрашиваем JSON со списком веток
             std::string response;
             long http_code = 0;
             if (!perform_http_request("https://rdb.altlinux.org/api/export/branch_tree", response, http_code)) {
                 std::cerr << "Error: Failed to fetch branch list, HTTP code: " << http_code << std::endl;
-                return false;
+                return; // Возвращаемся из лямбды
             }
-        
 
-            json_object* parsed_json = json_tokener_parse(response.c_str());//Парсим объект
+            json_object* parsed_json = json_tokener_parse(response.c_str()); // Парсим JSON-объект
             if (!parsed_json) {
                 std::cerr << "Error: Failed to parse branch list JSON" << std::endl;
-                return false;
+                return;
             }
 
-            auto cleanup_json = [](json_object* obj) { json_object_put(obj); };//Чистим объект
+            // Используем std::unique_ptr для автоматической очистки json_object
+            auto cleanup_json = [](json_object* obj) { json_object_put(obj); };
             std::unique_ptr<json_object, decltype(cleanup_json)> json_guard(parsed_json, cleanup_json);
 
-            json_object* branches;//Получаем список веток
+            json_object* branches; // Получаем список веток
             if (!json_object_object_get_ex(parsed_json, "branches", &branches) || !json_object_is_type(branches, json_type_array)) {
                 std::cerr << "Error: Invalid branch list format" << std::endl;
-                return false;
+                return;
             }
 
-            for (size_t i = 0; i < json_object_array_length(branches); i++) {// Заполняет кэш именами веток
+            // Заполняем кэш именами веток
+            for (size_t i = 0; i < json_object_array_length(branches); i++) {
                 const char* name = json_object_get_string(json_object_array_get_idx(branches, i));
                 if (name) {
                     cached_branches.emplace_back(name);
                 }
             }
-            
-            // Ищет ветку в кэшированном списке
-            for (const auto& name : cached_branches) {
-                if (name == branch_name) {
-                    return true;
-                }
+        });
+
+
+        if (cached_branches.empty()) {
+            std::cerr << "Error: Кэш списка веток пуст. Не удалось получить ветки." << std::endl;
+            return false;
+        }
+
+        // Ищем ветку в кэшированном списке
+        for (const auto& name : cached_branches) {
+            if (name == branch_name) {
+                return true;
             }
         }
-        std::cerr << "Error: Branch '" << branch_name << "' not found in branch list" << std::endl;
+        
+        std::cerr << "Error: Ветка '" << branch_name << "' не найдена в списке веток" << std::endl;
         return false;
     }
-
     std::string make_package_url(const char* branch_name) {
         // Формирует URL для запроса пакетов ветки
         return "https://rdb.altlinux.org/api/export/branch_binary_packages/" + std::string(branch_name);
     }
 
     char* allocate_result(const std::string& data) {
-        // Выделяет память для результата в стиле C
+        // Выделяет память для результата 
         char* result = strdup(data.c_str());
         if (!result) {
             std::cerr << "Error: Failed to allocate memory for result" << std::endl;
@@ -112,16 +123,16 @@ extern "C" {
 
     char* fetch_package_list(const char* branch) {
 
-        if (!is_valid_branch(branch_name)) {
+        if (!is_valid_branch(branch)) {
             return nullptr;
         }
 
         std::string response;
         long http_code = 0;
-        std::string url = make_package_url(branch_name);
+        std::string url = make_package_url(branch);
 
         if (!perform_http_request(url, response, http_code)) {
-            std::cerr << "Error: Failed to fetch packages for '" << branch_name << "', HTTP code: " << http_code << std::endl;
+            std::cerr << "Error: Failed to fetch packages for '" << branch << "', HTTP code: " << http_code << std::endl;
             return nullptr;
         }
 
