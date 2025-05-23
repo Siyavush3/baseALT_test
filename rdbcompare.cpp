@@ -7,8 +7,31 @@
 #include <vector>
 #include <memory> 
 #include <mutex> 
+#include <rpm/rpmvercmp.h>
 
 namespace {
+
+    struct Package { //Вспомогательная структура
+        std::string name;
+        std::string epoch;
+        std::string version;
+        std::string release;
+        std::string arch;
+
+        Package(std::string n, std::string e, std::string v, std::string r, std::string a)
+            : name(std::move(n)), epoch(std::move(e)), version(std::move(v)), release(std::move(r)), arch(std::move(a)) {}
+
+
+        std::string toString() const {
+            return name + "-" + version + "-" + release + "." + arch;//Для отладки
+        }
+    };
+
+    using ArchPackages = std::map<std::string, std::map<std::string, Package>>;// Пакеты сгруппированные по архитектуре
+
+    
+
+
     std::once_flag branches_init_flag;//Флаг инициализации
 
     // Кэш для действительных имен веток
@@ -117,6 +140,88 @@ namespace {
             std::cerr << "Error: Failed to allocate memory for result" << std::endl;
         }
         return result;
+    }
+
+
+    ArchPackages parse_packages_json(const char* json_data) {
+        ArchPackages arch_packages; 
+
+        if (!json_data) {
+            std::cerr << "Error: Input JSON data is null." << std::endl;
+            return arch_packages;
+        }
+
+        json_object* parsed_json = json_tokener_parse(json_data);
+        if (!parsed_json) {
+            std::cerr << "Error: Failed to parse package list JSON. Invalid JSON format." << std::endl;
+            return arch_packages;
+        }
+
+        
+        auto cleanup_json = [](json_object* obj) { json_object_put(obj); };
+        std::unique_ptr<json_object, decltype(cleanup_json)> json_guard(parsed_json, cleanup_json);
+
+        json_object* packages_array;
+        
+        if (!json_object_object_get_ex(parsed_json, "packages", &packages_array) || !json_object_is_type(packages_array, json_type_array)) {
+            std::cerr << "Error: 'packages' array not found or is not an array in JSON response." << std::endl;
+            return arch_packages;
+        }
+
+        
+        for (size_t i = 0; i < json_object_array_length(packages_array); ++i) {
+            json_object* pkg_obj = json_object_array_get_idx(packages_array, i);
+            if (!pkg_obj) {
+                std::cerr << "Warning: Null package object found in array at index " << i << ". Skipping." << std::endl;
+                continue;
+            }
+
+            // Временные указатели для извлечения значений
+            json_object *name_obj, *epoch_obj, *version_obj, *release_obj, *arch_obj;
+
+            if (json_object_object_get_ex(pkg_obj, "name", &name_obj) &&
+                json_object_object_get_ex(pkg_obj, "epoch", &epoch_obj) &&
+                json_object_object_get_ex(pkg_obj, "version", &version_obj) &&
+                json_object_object_get_ex(pkg_obj, "release", &release_obj) &&
+                json_object_object_get_ex(pkg_obj, "arch", &arch_obj))
+            {
+                
+                std::string epoch_str = (epoch_obj && json_object_get_string(epoch_obj)) ? json_object_get_string(epoch_obj) : "0";
+
+                
+                Package pkg(
+                    json_object_get_string(name_obj),
+                    epoch_str,
+                    json_object_get_string(version_obj),
+                    json_object_get_string(release_obj),
+                    json_object_get_string(arch_obj)
+                );
+
+                arch_packages[pkg.arch][pkg.name] = pkg;
+            } else {
+                std::cerr << "Warning: Missing one or more required fields (name, epoch, version, release, arch) for package at index " << i << ". Skipping." << std::endl;
+            }
+        }
+
+        return arch_packages;
+    }
+    // Возвращает: >0 если pkg1 новее, <0 если pkg2 новее, 0 если равны.
+    int compare_versions(const Package& pkg1, const Package& pkg2) {
+
+        long epoch1 = std::atol(pkg1.epoch.c_str());
+        long epoch2 = std::atol(pkg2.epoch.c_str());
+
+
+        if (epoch1 != epoch2) {
+            return epoch1 - epoch2;
+        }
+
+        
+        int ver_rel_cmp_result = rpmvercmp(pkg1.version.c_str(), pkg1.release.c_str(), //Сравнение по правилу RPM
+                                           pkg2.version.c_str(), pkg2.release.c_str());
+
+        return ver_rel_cmp_result;
+       
     }
 }
 extern "C" {

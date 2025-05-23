@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -fPIC -Wall -g -std=c++17
 LDFLAGS = -shared
-LIBS = -lcurl -ljson-c
+LIBS = -lcurl -ljson-c -lrpm
 PREFIX = /usr
 LIBDIR = $(PREFIX)/lib
 BINDIR = $(PREFIX)/bin
