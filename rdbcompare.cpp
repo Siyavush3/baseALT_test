@@ -7,9 +7,11 @@
 #include <vector>
 #include <memory> 
 #include <mutex> 
+#include <map>
+#include <set> 
 #include <rpm/rpmvercmp.h>
 
-namespace {
+namespace rdbcompare{
 
     struct Package { //Вспомогательная структура
         std::string name;
@@ -17,7 +19,7 @@ namespace {
         std::string version;
         std::string release;
         std::string arch;
-
+        Package() : name(""), epoch("0"), version(""), release(""), arch("") {}
         Package(std::string n, std::string e, std::string v, std::string r, std::string a)
             : name(std::move(n)), epoch(std::move(e)), version(std::move(v)), release(std::move(r)), arch(std::move(a)) {}
 
@@ -207,51 +209,136 @@ namespace {
     }
     // Возвращает: >0 если pkg1 новее, <0 если pkg2 новее, 0 если равны.
     int compare_versions(const Package& pkg1, const Package& pkg2) {
-
         long epoch1 = std::atol(pkg1.epoch.c_str());
         long epoch2 = std::atol(pkg2.epoch.c_str());
-
 
         if (epoch1 != epoch2) {
             return epoch1 - epoch2;
         }
 
-        
-        int ver_rel_cmp_result = rpmvercmp(pkg1.version.c_str(), pkg1.release.c_str(), //Сравнение по правилу RPM
-                                           pkg2.version.c_str(), pkg2.release.c_str());
+        int ver_cmp_result = rpmvercmp(pkg1.version.c_str(), pkg2.version.c_str());
 
-        return ver_rel_cmp_result;
-       
+        if (ver_cmp_result != 0) {
+            return ver_cmp_result;
+        }
+
+        int rel_cmp_result = rpmvercmp(pkg1.release.c_str(), pkg2.release.c_str());
+
+        return rel_cmp_result;
     }
 }
 extern "C" {
 
     char* fetch_package_list(const char* branch) {
 
-        if (!is_valid_branch(branch)) {
+        if (!rdbcompare::is_valid_branch(branch)) {
             return nullptr;
         }
 
         std::string response;
         long http_code = 0;
-        std::string url = make_package_url(branch);
+        std::string url = rdbcompare::make_package_url(branch);
 
-        if (!perform_http_request(url, response, http_code)) {
+        if (!rdbcompare::perform_http_request(url, response, http_code)) {
             std::cerr << "Error: Failed to fetch packages for '" << branch << "', HTTP code: " << http_code << std::endl;
             return nullptr;
         }
 
-        return allocate_result(response);
+        return rdbcompare::allocate_result(response);
 
     }
 
-    char* compare_packages(const char* branch1_data, const char* branch2_data) {
-        // Заглушка
-        std::string result = R"({
-            "architectures": {}
-        })";
-        char* ret = strdup(result.c_str());
-        return ret;
+char* compare_packages(const char* branch1_data, const char* branch2_data) {
+
+        if (!branch1_data || !branch2_data) {
+            std::cerr << "Error: One or both branch data inputs are null." << std::endl;
+            return nullptr;
+        }
+
+
+        rdbcompare::ArchPackages branch1_pkgs = rdbcompare::parse_packages_json(branch1_data);
+        rdbcompare::ArchPackages branch2_pkgs = rdbcompare::parse_packages_json(branch2_data);
+
+        if (branch1_pkgs.empty() && strlen(branch1_data) > 0) {
+            std::cerr << "Error: Failed to parse packages for branch 1." << std::endl;
+            return nullptr;
+        }
+        if (branch2_pkgs.empty() && strlen(branch2_data) > 0) {
+            std::cerr << "Error: Failed to parse packages for branch 2." << std::endl;
+            return nullptr;
+        }
+
+
+        json_object* result_json = json_object_new_object();
+        auto cleanup_result_json = [](json_object* obj) { json_object_put(obj); };
+        std::unique_ptr<json_object, decltype(cleanup_result_json)> result_guard(result_json, cleanup_result_json);
+
+        json_object* architectures_json = json_object_new_object();
+        json_object_object_add(result_json, "architectures", architectures_json);
+
+
+        std::set<std::string> all_architectures;
+
+        for (const auto& pair : branch1_pkgs) {
+            all_architectures.insert(pair.first);
+        }
+
+        for (const auto& pair : branch2_pkgs) {
+            all_architectures.insert(pair.first);
+        }
+
+
+        for (const std::string& arch : all_architectures) {
+            json_object* arch_comparison_json = json_object_new_object();
+            json_object_object_add(architectures_json, arch.c_str(), arch_comparison_json);
+
+            json_object* branch1_only_json = json_object_new_array();
+            json_object* branch2_only_json = json_object_new_array();
+            json_object* branch1_newer_json = json_object_new_array();
+
+
+            json_object_object_add(arch_comparison_json, "branch1_only", branch1_only_json);
+            json_object_object_add(arch_comparison_json, "branch2_only", branch2_only_json);
+            json_object_object_add(arch_comparison_json, "branch1_newer", branch1_newer_json);
+
+
+            const auto& pkgs1_in_arch = branch1_pkgs.count(arch) ? branch1_pkgs.at(arch) : std::map<std::string, rdbcompare::Package>();
+            const auto& pkgs2_in_arch = branch2_pkgs.count(arch) ? branch2_pkgs.at(arch) : std::map<std::string, rdbcompare::Package>();
+
+            // Пакеты только в Ветке 1 и новее в Ветке 1
+            for (const auto& pair1 : pkgs1_in_arch) {
+                const std::string& pkg_name = pair1.first;
+                const rdbcompare::Package& pkg1 = pair1.second;
+
+                if (pkgs2_in_arch.count(pkg_name)) { // Пакет есть в обеих ветках
+                    const rdbcompare::Package& pkg2 = pkgs2_in_arch.at(pkg_name);
+                    int cmp_result = rdbcompare::compare_versions(pkg1, pkg2); 
+                    if (cmp_result > 0) { // pkg1 новее, чем pkg2
+                        json_object* diff_entry = json_object_new_object();
+                        json_object_object_add(diff_entry, "name", json_object_new_string(pkg_name.c_str()));
+                        json_object_object_add(diff_entry, "branch1_version_release", json_object_new_string((pkg1.version + "-" + pkg1.release).c_str()));
+                        json_object_object_add(diff_entry, "branch2_version_release", json_object_new_string((pkg2.version + "-" + pkg2.release).c_str()));
+                        json_object_array_add(branch1_newer_json, diff_entry);
+                    }
+                } else { //Пакет только в Ветке 1
+                    json_object_array_add(branch1_only_json, json_object_new_string(pkg_name.c_str()));
+                }
+            }
+
+            //Пакеты только в Ветке 2
+            for (const auto& pair2 : pkgs2_in_arch) {
+                const std::string& pkg_name = pair2.first;
+                if (!pkgs1_in_arch.count(pkg_name)) {
+                    json_object_array_add(branch2_only_json, json_object_new_string(pkg_name.c_str()));
+                }
+            }
+        }
+
+        const char* json_string = json_object_to_json_string_ext(result_json, JSON_C_TO_STRING_PRETTY);
+        char* final_result = strdup(json_string);
+
+
+        return final_result; // Возвращаем указатель на выделенную память
     }
 
 }
