@@ -15,5 +15,3 @@ if not result:
     sys.exit(1)
 
 print(json.loads(result.decode('utf-8')))
-
-ctypes.c_free(result)
