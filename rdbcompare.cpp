@@ -2,72 +2,140 @@
 #include <curl/curl.h>
 #include <string>
 #include <cstring>
+#include <json-c/json.h>
 #include <iostream>
+#include <vector>
 
-static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* data) {
-    size_t total_size = size * nmemb;
-    data->append(static_cast<char*>(contents), total_size);
-    return total_size;
+namespace {
+
+    size_t write_callback(void* contents, size_t size, size_t nmemb, std::string* output) { 
+        // Записывает данные HTTP-ответа в строку
+        size_t total_size = size * nmemb;
+        output->append(static_cast<char*>(contents), total_size);
+        return total_size;
+    }
+
+    bool perform_http_request(const std::string& url, std::string& response, long& http_code) {
+        //Выполняем запрос и возвращаем true при response 200
+        CURL* curl = curl_easy_init();
+        if (!curl) {
+            std::cerr << "Error: Failed to initialize curl" << std::endl;
+            return false;
+        }
+
+        auto cleanup = [](CURL* c) { curl_easy_cleanup(c); };
+        std::unique_ptr<CURL, decltype(cleanup)> curl_guard(curl, cleanup);
+
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "rdbcompare/1.0");
+
+        CURLcode res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            std::cerr << "Error: HTTP request failed: " << curl_easy_strerror(res) << std::endl;
+            return false;
+        }
+
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        return http_code == 200;
+    }
+
+    bool is_valid_branch(const char* branch_name) {
+        //Проверяем название веток на валидность
+
+        if (!branch_name || !*branch_name) {//Проверяет корректность входного имени ветки
+            std::cerr << "Error: Invalid branch name" << std::endl;
+            return false;
+
+        }
+
+        static std::vector<std::string> cached_branches;//Кешируем ветки 
+        if (cached_branches.empty()) {
+            // Запрашивает JSON со списком веток
+            std::string response;
+            long http_code = 0;
+            if (!perform_http_request("https://rdb.altlinux.org/api/export/branch_tree", response, http_code)) {
+                std::cerr << "Error: Failed to fetch branch list, HTTP code: " << http_code << std::endl;
+                return false;
+            }
+        
+
+            json_object* parsed_json = json_tokener_parse(response.c_str());//Парсим объект
+            if (!parsed_json) {
+                std::cerr << "Error: Failed to parse branch list JSON" << std::endl;
+                return false;
+            }
+
+            auto cleanup_json = [](json_object* obj) { json_object_put(obj); };//Чистим объект
+            std::unique_ptr<json_object, decltype(cleanup_json)> json_guard(parsed_json, cleanup_json);
+
+            json_object* branches;//Получаем список веток
+            if (!json_object_object_get_ex(parsed_json, "branches", &branches) || !json_object_is_type(branches, json_type_array)) {
+                std::cerr << "Error: Invalid branch list format" << std::endl;
+                return false;
+            }
+
+            for (size_t i = 0; i < json_object_array_length(branches); i++) {// Заполняет кэш именами веток
+                const char* name = json_object_get_string(json_object_array_get_idx(branches, i));
+                if (name) {
+                    cached_branches.emplace_back(name);
+                }
+            }
+            
+            // Ищет ветку в кэшированном списке
+            for (const auto& name : cached_branches) {
+                if (name == branch_name) {
+                    return true;
+                }
+            }
+        }
+        std::cerr << "Error: Branch '" << branch_name << "' not found in branch list" << std::endl;
+        return false;
+    }
+
+    std::string make_package_url(const char* branch_name) {
+        // Формирует URL для запроса пакетов ветки
+        return "https://rdb.altlinux.org/api/export/branch_binary_packages/" + std::string(branch_name);
+    }
+
+    char* allocate_result(const std::string& data) {
+        // Выделяет память для результата в стиле C
+        char* result = strdup(data.c_str());
+        if (!result) {
+            std::cerr << "Error: Failed to allocate memory for result" << std::endl;
+        }
+        return result;
+    }
 }
-
 extern "C" {
 
-char* fetch_package_list(const char* branch) {
+    char* fetch_package_list(const char* branch) {
 
-    if (!branch || strlen(branch) == 0) { 
-        std::cerr << "Error: Invalid branch name" << std::endl;
-        return nullptr;
+        if (!is_valid_branch(branch_name)) {
+            return nullptr;
+        }
+
+        std::string response;
+        long http_code = 0;
+        std::string url = make_package_url(branch_name);
+
+        if (!perform_http_request(url, response, http_code)) {
+            std::cerr << "Error: Failed to fetch packages for '" << branch_name << "', HTTP code: " << http_code << std::endl;
+            return nullptr;
+        }
+
+        return allocate_result(response);
+
     }
 
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        std::cerr << "Error: curl_easy_init() failed" << std::endl;
-        return nullptr;
+    char* compare_packages(const char* branch1_data, const char* branch2_data) {
+        // Заглушка
+        std::string result = R"({
+            "architectures": {}
+        })";
+        char* ret = strdup(result.c_str());
+        return ret;
     }
-
-    std::string url = "https://rdb.altlinux.org/api/export/branch_binary_packages/" + std::string(branch);
-
-    std::string response_data;//Data buffer
-
-
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "rdbcompare/1.0");
-
-
-    CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        std::cerr << "Error: curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-        curl_easy_cleanup(curl);
-        return nullptr;
-    }
-
-    long http_code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    curl_easy_cleanup(curl);
-
-    if (http_code != 200) {
-        std::cerr << "Error: HTTP response code " << http_code << std::endl;
-        return nullptr;
-    }
-
-    char* result = strdup(response_data.c_str());
-    if (!result) {
-        std::cerr << "Error: strdup() failed" << std::endl;
-        return nullptr;
-    }
-
-    return result;
-}
-
-char* compare_packages(const char* branch1_data, const char* branch2_data) {
-    // Заглушка
-    std::string result = R"({
-        "architectures": {}
-    })";
-    char* ret = strdup(result.c_str());
-    return ret;
-}
 
 }
