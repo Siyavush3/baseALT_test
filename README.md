@@ -63,7 +63,7 @@ Follow these steps to build and install the library and the CLI tool:
 1. **Clone the Repository:**  
 ```
    git clone https://github.com/Siyavush3/baseALT\_test.git  
-   cd baseALT\_test
+   cd baseALT_test
    ```
 
 2. Build the C++ Shared Library:  
@@ -88,7 +88,7 @@ Follow these steps to build and install the library and the CLI tool:
 
 Once installed, you can run the rdb\_compare utility from any directory.
 ```
-rdb\_compare \[BRANCH1\] \[BRANCH2\] \[OPTIONS\]
+rdb_compare [BRANCH1] [BRANCH2] [OPTIONS]
 ```
 
 * BRANCH1: Name of the first branch (default: sisyphus).  
@@ -98,42 +98,42 @@ rdb\_compare \[BRANCH1\] \[BRANCH2\] \[OPTIONS\]
 
 1. **Compare sisyphus and p10 (default branches), showing all differences in human-readable format:**  
    ```
-   rdb\_compare  
+   rdb_compare  
    ```
    \# or explicitly:  
    ```
-   rdb\_compare sisyphus p10
+   rdb_compare sisyphus p10
    ```
 
 2. **Compare p9 and p10, showing only packages unique to p9:**  
    ```
-   rdb\_compare p9 p10 \--category branch1\_only
+   rdb_compare p9 p10 --category branch1_only
    ```
 
 3. **Compare sisyphus and p10, showing only packages newer in sisyphus:**  
    ```
-   rdb\_compare sisyphus p10 \--category branch1\_newer
+   rdb_compare sisyphus p10 --category branch1_newer
    ```
 
 4. Get the raw JSON package list for a single branch (p9):  
    This ignores BRANCH2 and comparison options.  
    ```
-   rdb\_compare \--show-branch-json p9
+   rdb_compare --show-branch-json p9
    ```
 
 5. **Get the raw JSON comparison result (unformatted by Python):**  
    ```
-   rdb\_compare sisyphus p10 \--json
+   rdb_compare sisyphus p10 --json
    ```
 
 6. **Display the utility's version:**
    ```
-   rdb\_compare \--version
+   rdb_compare --version
    ```
 
 7. **Show help message:**
    ```  
-   rdb\_compare \--help
+   rdb_compare --help
    ```
 ## **Project Structure**
 
