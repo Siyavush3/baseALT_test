@@ -228,6 +228,13 @@ namespace rdbcompare{
     }
 }
 extern "C" {
+    void rdbcompare_init() {
+        curl_global_init(CURL_GLOBAL_ALL);
+    }
+
+    void rdbcompare_cleanup() {
+        curl_global_cleanup();
+    }
 
     char* fetch_package_list(const char* branch) {
 

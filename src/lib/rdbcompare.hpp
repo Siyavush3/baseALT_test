@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+void rdbcompare_init();
+void rdbcompare_cleanup();
 
 char* fetch_package_list(const char* branch);
 
