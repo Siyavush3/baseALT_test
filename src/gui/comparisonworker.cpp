@@ -19,10 +19,7 @@ void ComparisonWorker::doComparisonWork() {
     emit workStarted(); // Сообщаем GUI, что работа началась
     emit workProgress("Инициализация библиотеки и подготовка...");
 
-    // Вызываем глобальную инициализацию вашей C++ библиотеки
-    // Это важно, так как curl_global_init() должен быть вызван один раз на поток
-    rdbcompare_init(); 
-
+    
     char* branch1_data_ptr = nullptr;
     char* branch2_data_ptr = nullptr;
     char* comparison_result_ptr = nullptr;
@@ -83,8 +80,6 @@ void ComparisonWorker::doComparisonWork() {
     if (branch2_data_ptr) free(branch2_data_ptr);
     if (comparison_result_ptr) free(comparison_result_ptr);
 
-    // Вызываем глобальную очистку вашей C++ библиотеки
-    rdbcompare_cleanup(); 
 }
 
 void ComparisonWorker::cancelRequested() {
