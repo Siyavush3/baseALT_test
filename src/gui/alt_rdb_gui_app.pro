@@ -1,15 +1,15 @@
 # src/gui/alt_rdb_gui_app.pro
-QT       += widgets # Используем QtWidgets для классического GUI
+QT       += widgets
 
 TARGET   = alt_rdb_gui_app
-
 TEMPLATE = app
 
 SOURCES += main.cpp \
-           mainwindow.cpp
+           mainwindow.cpp \
+           comparisonworker.cpp 
 
-HEADERS += mainwindow.h
+HEADERS += mainwindow.h \
+           comparisonworker.h  
+
 
 LIBS += -lrdbcompare
-
-
