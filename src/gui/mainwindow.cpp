@@ -422,7 +422,10 @@ void MainWindow::populateTable(const std::string& json_architectures_str) {
 
             for (const QJsonValue &pkgValue : packagesArray) {
                 QString name, epoch, ver1, rel1, ver2, rel2, categoryText;
-                categoryText = category.replace("_", " ").capitalize(); // Человекочитаемое имя категории
+                categoryText = category.replace("_", " "); // Сначала заменяем '_' на пробел
+                if (!categoryText.isEmpty()) {
+                    categoryText[0] = categoryText[0].toUpper(); // Делаем первый символ заглавным
+                }
 
                 if (category == "branch1_only") {
                     name = pkgValue.toString();
