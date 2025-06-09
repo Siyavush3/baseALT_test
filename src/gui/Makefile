@@ -17,7 +17,7 @@ CXX           = g++
 DEFINES       = -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
 CFLAGS        = -pipe -O2 -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
 CXXFLAGS      = -pipe -O2 -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
-INCPATH       = -I. -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I. -I/usr/lib64/dqt5/mkspecs/linux-g++
+INCPATH       = -I. -I../lib -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I. -I/usr/lib64/dqt5/mkspecs/linux-g++
 QMAKE         = /usr/share/dqt5/bin/qmake
 DEL_FILE      = rm -f
 CHK_DIR_EXISTS= test -d
@@ -37,7 +37,7 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = alt_rdb_gui_app1.0.0
-DISTDIR = /home/admin/baseALT/baseALT_test/src/gui/.tmp/alt_rdb_gui_app1.0.0
+DISTDIR = /opt/baseALT/baseALT_test/src/gui/.tmp/alt_rdb_gui_app1.0.0
 LINK          = g++
 LFLAGS        = -Wl,-O1
 LIBS          = $(SUBLIBS) -lrdbcompare /usr/lib64/dqt5/lib/libQt5Widgets.so /usr/lib64/dqt5/lib/libQt5Gui.so /usr/lib64/dqt5/lib/libQt5Core.so -lGL -lpthread   
@@ -126,6 +126,7 @@ DIST          = /usr/lib64/dqt5/mkspecs/features/spec_pre.prf \
 		/usr/lib64/dqt5/mkspecs/features/qt_config.prf \
 		/usr/lib64/dqt5/mkspecs/linux-g++/qmake.conf \
 		/usr/lib64/dqt5/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		/usr/lib64/dqt5/mkspecs/features/exclusive_builds.prf \
 		/usr/lib64/dqt5/mkspecs/features/toolchain.prf \
 		/usr/lib64/dqt5/mkspecs/features/default_pre.prf \
@@ -225,6 +226,7 @@ Makefile: alt_rdb_gui_app.pro /usr/lib64/dqt5/mkspecs/linux-g++/qmake.conf /usr/
 		/usr/lib64/dqt5/mkspecs/features/qt_config.prf \
 		/usr/lib64/dqt5/mkspecs/linux-g++/qmake.conf \
 		/usr/lib64/dqt5/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		/usr/lib64/dqt5/mkspecs/features/exclusive_builds.prf \
 		/usr/lib64/dqt5/mkspecs/features/toolchain.prf \
 		/usr/lib64/dqt5/mkspecs/features/default_pre.prf \
@@ -311,6 +313,7 @@ Makefile: alt_rdb_gui_app.pro /usr/lib64/dqt5/mkspecs/linux-g++/qmake.conf /usr/
 /usr/lib64/dqt5/mkspecs/features/qt_config.prf:
 /usr/lib64/dqt5/mkspecs/linux-g++/qmake.conf:
 /usr/lib64/dqt5/mkspecs/features/spec_post.prf:
+.qmake.stash:
 /usr/lib64/dqt5/mkspecs/features/exclusive_builds.prf:
 /usr/lib64/dqt5/mkspecs/features/toolchain.prf:
 /usr/lib64/dqt5/mkspecs/features/default_pre.prf:
@@ -383,15 +386,17 @@ compiler_moc_header_make_all: moc_mainwindow.cpp moc_comparisonworker.cpp
 compiler_moc_header_clean:
 	-$(DEL_FILE) moc_mainwindow.cpp moc_comparisonworker.cpp
 moc_mainwindow.cpp: mainwindow.h \
+		../lib/rdbcompare.hpp \
 		comparisonworker.h \
 		moc_predefs.h \
 		/usr/share/dqt5/bin/moc
-	/usr/share/dqt5/bin/moc $(DEFINES) --include /home/admin/baseALT/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/home/admin/baseALT/baseALT_test/src/gui -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include mainwindow.h -o moc_mainwindow.cpp
+	/usr/share/dqt5/bin/moc $(DEFINES) --include /opt/baseALT/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/opt/baseALT/baseALT_test/src/gui -I/opt/baseALT/baseALT_test/src/lib -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include mainwindow.h -o moc_mainwindow.cpp
 
 moc_comparisonworker.cpp: comparisonworker.h \
+		../lib/rdbcompare.hpp \
 		moc_predefs.h \
 		/usr/share/dqt5/bin/moc
-	/usr/share/dqt5/bin/moc $(DEFINES) --include /home/admin/baseALT/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/home/admin/baseALT/baseALT_test/src/gui -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include comparisonworker.h -o moc_comparisonworker.cpp
+	/usr/share/dqt5/bin/moc $(DEFINES) --include /opt/baseALT/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/opt/baseALT/baseALT_test/src/gui -I/opt/baseALT/baseALT_test/src/lib -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include comparisonworker.h -o moc_comparisonworker.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
@@ -410,14 +415,17 @@ compiler_clean: compiler_moc_predefs_clean compiler_moc_header_clean
 ####### Compile
 
 main.o: main.cpp mainwindow.h \
+		../lib/rdbcompare.hpp \
 		comparisonworker.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 mainwindow.o: mainwindow.cpp mainwindow.h \
+		../lib/rdbcompare.hpp \
 		comparisonworker.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o mainwindow.o mainwindow.cpp
 
-comparisonworker.o: comparisonworker.cpp comparisonworker.h
+comparisonworker.o: comparisonworker.cpp comparisonworker.h \
+		../lib/rdbcompare.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o comparisonworker.o comparisonworker.cpp
 
 moc_mainwindow.o: moc_mainwindow.cpp 

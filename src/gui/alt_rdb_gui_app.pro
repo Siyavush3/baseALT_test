@@ -10,6 +10,6 @@ SOURCES += main.cpp \
 
 HEADERS += mainwindow.h \
            comparisonworker.h  
-
+INCLUDEPATH += $$PWD/../lib
 
 LIBS += -lrdbcompare
