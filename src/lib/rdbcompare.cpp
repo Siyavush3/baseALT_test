@@ -260,7 +260,6 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
         return nullptr;
     }
 
-
     rdbcompare::ArchPackages branch1_pkgs = rdbcompare::parse_packages_json(branch1_data);
     rdbcompare::ArchPackages branch2_pkgs = rdbcompare::parse_packages_json(branch2_data);
 
@@ -273,7 +272,6 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
         return nullptr;
     }
 
-
     json_object* result_json = json_object_new_object();
     auto cleanup_result_json = [](json_object* obj) { json_object_put(obj); };
     std::unique_ptr<json_object, decltype(cleanup_result_json)> result_guard(result_json, cleanup_result_json);
@@ -281,7 +279,6 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
     json_object* architectures_json = json_object_new_object();
     json_object_object_add(result_json, "architectures", architectures_json);
 
-    // Инициализация глобальных счетчиков для раздела "summary"
     int total_branch1_only_count = 0;
     int total_branch2_only_count = 0;
     int total_branch1_newer_count = 0;
@@ -296,43 +293,37 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
         all_architectures.insert(pair.first);
     }
 
-
     for (const std::string& arch : all_architectures) {
         json_object* arch_comparison_json = json_object_new_object();
         json_object_object_add(architectures_json, arch.c_str(), arch_comparison_json);
 
-        // Создаем объекты для каждой категории, которые будут содержать count и packages
         json_object* branch1_only_obj = json_object_new_object();
         json_object* branch2_only_obj = json_object_new_object();
         json_object* branch1_newer_obj = json_object_new_object();
 
-        // Временные счетчики для текущей архитектуры
         int arch_branch1_only_count = 0;
         int arch_branch2_only_count = 0;
         int arch_branch1_newer_count = 0;
 
-        // Создаем массивы, в которые будут добавляться пакеты
         json_object* branch1_only_packages_array = json_object_new_array();
         json_object* branch2_only_packages_array = json_object_new_array();
         json_object* branch1_newer_packages_array = json_object_new_array();
 
-        // Добавляем эти массивы в соответствующие объекты категорий
         json_object_object_add(branch1_only_obj, "packages", branch1_only_packages_array);
         json_object_object_add(branch2_only_obj, "packages", branch2_only_packages_array);
         json_object_object_add(branch1_newer_obj, "packages", branch1_newer_packages_array);
 
         const auto& pkgs1_in_arch = branch1_pkgs.count(arch) ? branch1_pkgs.at(arch) : std::map<std::string, rdbcompare::Package>();
-        const auto& pkgs2_in_arch = branch2_pkgs.count(arch) ? pkgs2_in_arch.at(arch) : std::map<std::string, rdbcompare::Package>();
+        const auto& pkgs2_in_arch = branch2_pkgs.count(arch) ? branch2_pkgs.at(arch) : std::map<std::string, rdbcompare::Package>();
 
-        // Пакеты только в Ветке 1 и новее в Ветке 1
         for (const auto& pair1 : pkgs1_in_arch) {
             const std::string& pkg_name = pair1.first;
             const rdbcompare::Package& pkg1 = pair1.second;
 
-            if (pkgs2_in_arch.count(pkg_name)) { // Пакет есть в обеих ветках
+            if (pkgs2_in_arch.count(pkg_name)) {
                 const rdbcompare::Package& pkg2 = pkgs2_in_arch.at(pkg_name);
                 int cmp_result = rdbcompare::compare_versions(pkg1, pkg2); 
-                if (cmp_result > 0) { // pkg1 новее, чем pkg2
+                if (cmp_result > 0) {
                     json_object* diff_entry = json_object_new_object();
                     json_object_object_add(diff_entry, "name", json_object_new_string(pkg_name.c_str()));
                     json_object_object_add(diff_entry, "branch1_version_release", json_object_new_string((pkg1.version + "-" + pkg1.release).c_str()));
@@ -341,13 +332,12 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
                     arch_branch1_newer_count++; 
                     json_object_put(diff_entry); 
                 }
-            } else { //Пакет только в Ветке 1
+            } else {
                 json_object_array_add(branch1_only_packages_array, json_object_new_string(pkg_name.c_str())); 
                 arch_branch1_only_count++; 
             }
         }
 
-        //Пакеты только в Ветке 2
         for (const auto& pair2 : pkgs2_in_arch) {
             const std::string& pkg_name = pair2.first;
             if (!pkgs1_in_arch.count(pkg_name)) {
@@ -356,23 +346,19 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
             }
         }
 
-        
         json_object_object_add(branch1_only_obj, "count", json_object_new_int(arch_branch1_only_count));
         json_object_object_add(branch2_only_obj, "count", json_object_new_int(arch_branch2_only_count));
         json_object_object_add(branch1_newer_obj, "count", json_object_new_int(arch_branch1_newer_count));
 
-        
         json_object_object_add(arch_comparison_json, "branch1_only", branch1_only_obj);
         json_object_object_add(arch_comparison_json, "branch2_only", branch2_only_obj);
         json_object_object_add(arch_comparison_json, "branch1_newer", branch1_newer_obj);
 
-        
         total_branch1_only_count += arch_branch1_only_count;
         total_branch2_only_count += arch_branch2_only_count;
         total_branch1_newer_count += arch_branch1_newer_count;
     }
 
-    // Добавляем раздел "summary" в корневой JSON
     json_object* summary_json = json_object_new_object();
     json_object_object_add(summary_json, "total_branch1_only_count", json_object_new_int(total_branch1_only_count));
     json_object_object_add(summary_json, "total_branch2_only_count", json_object_new_int(total_branch2_only_count));
@@ -382,8 +368,7 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
     const char* json_string = json_object_to_json_string_ext(result_json, JSON_C_TO_STRING_PRETTY);
     char* final_result = strdup(json_string);
 
-
-    return final_result; // Возвращаем указатель на выделенную память
+    return final_result;
 }
 
 }
