@@ -37,7 +37,7 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = alt_rdb_gui_app1.0.0
-DISTDIR = /opt/baseALT/baseALT_test/src/gui/.tmp/alt_rdb_gui_app1.0.0
+DISTDIR = /home/admin/baseALT/test/baseALT_test/src/gui/.tmp/alt_rdb_gui_app1.0.0
 LINK          = g++
 LFLAGS        = -Wl,-O1
 LIBS          = $(SUBLIBS) -lrdbcompare /usr/lib64/dqt5/lib/libQt5Widgets.so /usr/lib64/dqt5/lib/libQt5Gui.so /usr/lib64/dqt5/lib/libQt5Core.so -lGL -lpthread   
@@ -390,13 +390,13 @@ moc_mainwindow.cpp: mainwindow.h \
 		comparisonworker.h \
 		moc_predefs.h \
 		/usr/share/dqt5/bin/moc
-	/usr/share/dqt5/bin/moc $(DEFINES) --include /opt/baseALT/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/opt/baseALT/baseALT_test/src/gui -I/opt/baseALT/baseALT_test/src/lib -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include mainwindow.h -o moc_mainwindow.cpp
+	/usr/share/dqt5/bin/moc $(DEFINES) --include /home/admin/baseALT/test/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/home/admin/baseALT/test/baseALT_test/src/gui -I/home/admin/baseALT/test/baseALT_test/src/lib -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include mainwindow.h -o moc_mainwindow.cpp
 
 moc_comparisonworker.cpp: comparisonworker.h \
 		../lib/rdbcompare.hpp \
 		moc_predefs.h \
 		/usr/share/dqt5/bin/moc
-	/usr/share/dqt5/bin/moc $(DEFINES) --include /opt/baseALT/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/opt/baseALT/baseALT_test/src/gui -I/opt/baseALT/baseALT_test/src/lib -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include comparisonworker.h -o moc_comparisonworker.cpp
+	/usr/share/dqt5/bin/moc $(DEFINES) --include /home/admin/baseALT/test/baseALT_test/src/gui/moc_predefs.h -I/usr/lib64/dqt5/mkspecs/linux-g++ -I/home/admin/baseALT/test/baseALT_test/src/gui -I/home/admin/baseALT/test/baseALT_test/src/lib -I/usr/include/dqt5 -I/usr/include/dqt5/QtWidgets -I/usr/include/dqt5/QtGui -I/usr/include/dqt5/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-alt-linux -I/usr/include/c++/13/backward -I/usr/lib64/gcc/x86_64-alt-linux/13/include -I/usr/local/include -I/usr/include comparisonworker.h -o moc_comparisonworker.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:

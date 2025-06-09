@@ -330,7 +330,6 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
                     json_object_object_add(diff_entry, "branch2_version_release", json_object_new_string((pkg2.version + "-" + pkg2.release).c_str()));
                     json_object_array_add(branch1_newer_packages_array, diff_entry); 
                     arch_branch1_newer_count++; 
-                    json_object_put(diff_entry); 
                 }
             } else {
                 json_object_array_add(branch1_only_packages_array, json_object_new_string(pkg_name.c_str())); 
