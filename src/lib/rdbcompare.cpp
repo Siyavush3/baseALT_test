@@ -32,8 +32,6 @@ namespace rdbcompare{
     using ArchPackages = std::map<std::string, std::map<std::string, Package>>;// Пакеты сгруппированные по архитектуре
 
     
-
-
     std::once_flag branches_init_flag;//Флаг инициализации
 
     // Кэш для действительных имен веток
@@ -324,7 +322,7 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
         json_object_object_add(branch1_newer_obj, "packages", branch1_newer_packages_array);
 
         const auto& pkgs1_in_arch = branch1_pkgs.count(arch) ? branch1_pkgs.at(arch) : std::map<std::string, rdbcompare::Package>();
-        const auto& pkgs2_in_arch = branch2_pkgs.count(arch) ? branch2_pkgs.at(arch) : std::map<std::string, rdbcompare::Package>();
+        const auto& pkgs2_in_arch = branch2_pkgs.count(arch) ? pkgs2_in_arch.at(arch) : std::map<std::string, rdbcompare::Package>();
 
         // Пакеты только в Ветке 1 и новее в Ветке 1
         for (const auto& pair1 : pkgs1_in_arch) {
@@ -341,10 +339,12 @@ char* compare_packages(const char* branch1_data, const char* branch2_data) {
                     json_object_object_add(diff_entry, "branch2_version_release", json_object_new_string((pkg2.version + "-" + pkg2.release).c_str()));
                     json_object_array_add(branch1_newer_packages_array, diff_entry); 
                     arch_branch1_newer_count++; 
+                    json_object_put(diff_entry); 
                 }
             } else { //Пакет только в Ветке 1
                 json_object_array_add(branch1_only_packages_array, json_object_new_string(pkg_name.c_str())); 
                 arch_branch1_only_count++; 
+            }
         }
 
         //Пакеты только в Ветке 2
