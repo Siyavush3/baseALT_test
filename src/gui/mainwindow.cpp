@@ -201,11 +201,11 @@ void MainWindow::onComparisonFinished(const QString& resultJson) {
     
 
     QJsonObject summaryObj = rootObj.value("summary").toObject();
-    updateCountsDisplay(summaryObj.toJsonDocument().toJson(QJsonDocument::Compact).toStdString());
+    updateCountsDisplay(QJsonDocument(summaryObj).toJson(QJsonDocument::Compact).toStdString());
 
 
     QJsonObject architecturesObj = rootObj.value("architectures").toObject();
-    populateTable(architecturesObj.toJsonDocument().toJson(QJsonDocument::Compact).toStdString());
+    populateTable(QJsonDocument(architecturesObj).toJson(QJsonDocument::Compact).toStdString());
 
     displayError("Сравнение успешно завершено.", false); 
     compareButton->setEnabled(true);
@@ -218,7 +218,7 @@ void MainWindow::onComparisonFinished(const QString& resultJson) {
 void MainWindow::onComparisonError(const QString& errorMessage) {
     workerThread->quit();
     workerThread->wait();
-    displayError(errorMessage, true); 
+    displayError(errorMessage.toStdString(), true); 
     compareButton->setEnabled(true);
     branch1Input->setEnabled(true);
     branch2Input->setEnabled(true);
@@ -249,7 +249,7 @@ void MainWindow::onWorkStarted() {
 }
 
 void MainWindow::onWorkProgress(const QString& message) {
-    displayError(message, false); 
+    displayError(message.toStdString(), false);
 }
 
 void MainWindow::onCancelButtonClicked() {
@@ -422,7 +422,8 @@ void MainWindow::populateTable(const std::string& json_architectures_str) {
 
             for (const QJsonValue &pkgValue : packagesArray) {
                 QString name, epoch, ver1, rel1, ver2, rel2, categoryText;
-                categoryText = category.replace("_", " "); // Сначала заменяем '_' на пробел
+                categoryText = category; 
+                categoryText.replace("_", " ");
                 if (!categoryText.isEmpty()) {
                     categoryText[0] = categoryText[0].toUpper(); // Делаем первый символ заглавным
                 }

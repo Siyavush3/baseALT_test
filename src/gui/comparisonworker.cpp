@@ -1,4 +1,5 @@
 #include "comparisonworker.h"
+#include "rdbcompare.hpp" 
 #include <stdexcept> // Для std::runtime_error
 #include <string>    // Для std::string
 
