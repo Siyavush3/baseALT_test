@@ -36,17 +36,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() {
     if (workerThread && workerThread->isRunning()) {
-        comparisonWorker->cancelRequested(); 
-        workerThread->quit(); 
-        workerThread->wait(1000); 
-        if (workerThread->isRunning()) {
-            workerThread->terminate(); 
-            workerThread->wait();
-        }
+        comparisonWorker->cancelRequested();
+        workerThread->quit();
+        workerThread->wait(3000);
     }
-    delete workerThread; // Удалить объекты потока и рабочего объекта
-    workerThread = nullptr;
-    comparisonWorker = nullptr;
 }
 
 void MainWindow::setupUi() {
@@ -141,7 +134,7 @@ void MainWindow::onCompareButtonClicked() {
     branch2OnlyCountLabel->setText("Только в Ветке 2: 0");
     branch1NewerCountLabel->setText("Новее в Ветке 1: 0");
     errorLabel->setText(" ");
-    fullComparisonResultJson.clear(); // Очищаем предыдущий результат
+    fullComparisonResultJson.clear();
 
     QString branch1 = branch1Input->text();
     QString branch2 = branch2Input->text();
@@ -151,45 +144,40 @@ void MainWindow::onCompareButtonClicked() {
         return;
     }
 
-
     compareButton->setEnabled(false);
     branch1Input->setEnabled(false);
     branch2Input->setEnabled(false);
     cancelButton->setEnabled(true);
-    saveJsonButton->setEnabled(false); 
+    saveJsonButton->setEnabled(false);
 
-    displayError("Начало загрузки и сравнения данных...", false); 
+    displayError("Начало загрузки и сравнения данных...", false);
 
-
-    workerThread = new QThread(this); // Родитель - MainWindow
+    workerThread = new QThread(this);
     comparisonWorker = new ComparisonWorker(branch1, branch2);
-    comparisonWorker->moveToThread(workerThread); 
-
+    comparisonWorker->moveToThread(workerThread);
 
     connect(workerThread, &QThread::started, comparisonWorker, &ComparisonWorker::doComparisonWork);
-    
-    // Сигналы рабочего объекта -> Слоты MainWindow
+
     connect(comparisonWorker, &ComparisonWorker::comparisonFinished, this, &MainWindow::onComparisonFinished);
     connect(comparisonWorker, &ComparisonWorker::comparisonError, this, &MainWindow::onComparisonError);
     connect(comparisonWorker, &ComparisonWorker::comparisonCancelled, this, &MainWindow::onComparisonCancelled);
     connect(comparisonWorker, &ComparisonWorker::workStarted, this, &MainWindow::onWorkStarted);
     connect(comparisonWorker, &ComparisonWorker::workProgress, this, &MainWindow::onWorkProgress);
 
-
     connect(workerThread, &QThread::finished, comparisonWorker, &QObject::deleteLater);
     connect(workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
-    
-    // Сигнал отмены -> Слот в рабочем объекте
+
     connect(cancelButton, &QPushButton::clicked, comparisonWorker, &ComparisonWorker::cancelRequested);
-    
+
     workerThread->start();
 }
 
 void MainWindow::onComparisonFinished(const QString& resultJson) {
-    workerThread->quit(); 
-    workerThread->wait(); 
+    if (workerThread) {
+        workerThread->quit();
+    }
 
-    fullComparisonResultJson = resultJson.toStdString(); // Сохраняем полный JSON-результат
+    fullComparisonResultJson = resultJson.toStdString();
 
     QJsonDocument doc = QJsonDocument::fromJson(resultJson.toUtf8());
     if (doc.isNull() || !doc.isObject()) {
@@ -199,10 +187,8 @@ void MainWindow::onComparisonFinished(const QString& resultJson) {
 
     QJsonObject rootObj = doc.object();
     
-
     QJsonObject summaryObj = rootObj.value("summary").toObject();
     updateCountsDisplay(QJsonDocument(summaryObj).toJson(QJsonDocument::Compact).toStdString());
-
 
     QJsonObject architecturesObj = rootObj.value("architectures").toObject();
     populateTable(QJsonDocument(architecturesObj).toJson(QJsonDocument::Compact).toStdString());
@@ -216,8 +202,10 @@ void MainWindow::onComparisonFinished(const QString& resultJson) {
 }
 
 void MainWindow::onComparisonError(const QString& errorMessage) {
-    workerThread->quit();
-    workerThread->wait();
+    if (workerThread) {
+        workerThread->quit();
+    }
+
     displayError(errorMessage.toStdString(), true); 
     compareButton->setEnabled(true);
     branch1Input->setEnabled(true);
@@ -227,15 +215,17 @@ void MainWindow::onComparisonError(const QString& errorMessage) {
 }
 
 void MainWindow::onComparisonCancelled() {
-    workerThread->quit();
-    workerThread->wait();
+    if (workerThread) {
+        workerThread->quit();
+    }
+    
     resultsTable->clearContents();
     resultsTable->setRowCount(0);
     branch1OnlyCountLabel->setText("Только в Ветке 1: 0");
     branch2OnlyCountLabel->setText("Только в Ветке 2: 0");
     branch1NewerCountLabel->setText("Новее в Ветке 1: 0");
     errorLabel->setText("Операция отменена.");
-    fullComparisonResultJson.clear(); // Очищаем результат
+    fullComparisonResultJson.clear();
     
     compareButton->setEnabled(true);
     branch1Input->setEnabled(true);
@@ -243,7 +233,6 @@ void MainWindow::onComparisonCancelled() {
     cancelButton->setEnabled(false);
     saveJsonButton->setEnabled(false);
 }
-
 void MainWindow::onWorkStarted() {
 
 }
